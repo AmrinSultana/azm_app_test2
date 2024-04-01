@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Switch, TouchableOpacity,Modal,TextInput } from "react-native";
+import Geolocation from '@react-native-community/geolocation';
+import firestore from '@react-native-firebase/firestore';
 import { Card } from "react-native-elements";
 import { SelectList } from "react-native-dropdown-select-list";
 import { useNavigation } from "@react-navigation/native";
@@ -15,17 +17,6 @@ const Checkin = ({ route }) => {
   const [checkoutText, setCheckoutText] = useState('');
   const navigation = useNavigation('');
 
-  const data = [
-    { key: '1', value: 'Faheel' },
-    { key: '2', value: 'Farwaniya' },
-    { key: '3', value: 'Kuwait City' },
-  ]
-
-  const data2 = [
-    { key: '1', value: 'Faheel' },
-    { key: '2', value: 'Farwaniya' },
-    { key: '3', value: 'Kuwait City' },
-  ]
   useEffect(() => {
     setIsButtonEnabled(selected !== null && selected2 !== null);
   }, [selected, selected2]);

@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, TextInput, Text, TouchableOpacity, StyleSheet, Alert, Animated, ToastAndroid } from 'react-native';
 import { SelectList } from 'react-native-dropdown-select-list';
+//import { firebase} from '../screens/FirebaseConfig';
+//import firebase from '@react-native-firebase/app';
+import '@react-native-firebase/firestore';
 import { firebase } from '../screens/FirebaseConfig';
 import Geolocation from '@react-native-community/geolocation';
 
