@@ -1,22 +1,68 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Switch, TouchableOpacity,Modal,TextInput } from "react-native";
+import { View, Text, StyleSheet, Switch, TouchableOpacity, Modal, TextInput } from "react-native";
 import Geolocation from '@react-native-community/geolocation';
-import firestore from '@react-native-firebase/firestore';
+import '@react-native-firebase/firestore';
+import { firebase } from "../screens/FirebaseConfig";
 import { Card } from "react-native-elements";
 import { SelectList } from "react-native-dropdown-select-list";
 import { useNavigation } from "@react-navigation/native";
+import { collection,addDoc,getDocs } from '@react-native-firebase/firestore';
 
 const Checkin = ({ route }) => {
 
   const { isCameraEnabled, startTime, toggleCamera } = route.params;
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selected, setSelected] = useState(null);
-  const [selected2, setSelected2] = useState(null);
+  const [selectedValue, setSelectedValue] = useState('');
+  const [selected, selected2] = useState(null);
+  const [places, setSelectedplaces] = useState([]);
+  const [reason, setSelectedreason] = useState(null);
   const [isButtonEnabled, setIsButtonEnabled] = useState(false);
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
   const [checkoutText, setCheckoutText] = useState('');
   const navigation = useNavigation('');
+/*
+  const checkFirebaseConnection = async () => {
+    try {
+      const snapshot = await firebase.firestore().collection('geofences').get();
+      if (snapshot.empty) {
+        console.log('No documents found!');
+      } else {
+        snapshot.forEach(doc => {
+          console.log(doc.id, '=>', doc.data());
+        });
+        return snapshot.docs.map(doc => doc.data()); 
+      }
+    } catch (error) {
+      console.error("Error fetching documents: ", error);
+    }
+  };*/
 
+ 
+
+  const fetchPlaces = async () => {
+    const querySnapshot = await getDocs(collection(firebase.firestore(), "geofences"));
+    const items = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        label: data.name.replace(/\"/g, ""), 
+        value: data.name.replace(/\"/g, ""),
+        id : doc.id
+      };
+    });
+    console.log("Fetched places:", items);
+    setSelectedplaces(items); 
+  };
+
+
+  useEffect(()=> {
+   fetchPlaces();
+  },[]);
+  //console.log("places:", places);
+
+  const handleSelectChange = (value) => {
+    setSelectedValue(value);
+  };
+  
   useEffect(() => {
     setIsButtonEnabled(selected !== null && selected2 !== null);
   }, [selected, selected2]);
@@ -32,7 +78,7 @@ const Checkin = ({ route }) => {
 
   const navigateToAnotherScreen = () => {
     if (isButtonEnabled) {
-      handleCheckout(); 
+      handleCheckout();
     }
   };
 
@@ -89,15 +135,17 @@ const Checkin = ({ route }) => {
             </View>
             <View style={{ marginTop: 25 }}>
               <SelectList
-                data={data}
-                setSelected={setSelected}
+                data={places}
+                setSelected={setSelectedplaces}
                 placeholder="Select Place"
+                displayField="label"
+                onValueChange = {handleSelectChange}
               />
             </View>
             <View style={{ marginTop: 25 }}>
               <SelectList
-                data={data2}
-                setSelected={setSelected2}
+                data={reason}
+                setSelected={setSelectedreason}
                 placeholder="Select Reason"
               />
             </View>

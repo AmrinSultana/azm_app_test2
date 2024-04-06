@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { View, Text, Button, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-// import firebase from '@react-native-firebase/app';
-// import '@react-native-firebase/auth';
+import firebase from '@react-native-firebase/app';
+import '@react-native-firebase/auth';
 
 
 const LoginScreen = ({navigation}) => {
