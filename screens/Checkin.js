@@ -2,24 +2,30 @@ import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Switch, TouchableOpacity, Modal, TextInput } from "react-native";
 import Geolocation from '@react-native-community/geolocation';
 import '@react-native-firebase/firestore';
-import { firebase } from "../screens/FirebaseConfig";
+import { app2 } from "../screens/FirebaseConfig";
 import { Card } from "react-native-elements";
 import { SelectList } from "react-native-dropdown-select-list";
 import { useNavigation } from "@react-navigation/native";
-import { collection,addDoc,getDocs } from '@react-native-firebase/firestore';
+import { GeoPoint, getDocs, collection, query, where} from '@react-native-firebase/firestore';
+//import { getCurrentPosition } from "geolocation";
+
+
+
 
 const Checkin = ({ route }) => {
 
   const { isCameraEnabled, startTime, toggleCamera } = route.params;
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedValue, setSelectedValue] = useState('');
-  const [selected, selected2] = useState(null);
+  //const [selected, selected2] = useState([]);
   const [places, setSelectedplaces] = useState([]);
-  const [reason, setSelectedreason] = useState(null);
+  const [reason, setSelectedreason] = useState([]);
   const [isButtonEnabled, setIsButtonEnabled] = useState(false);
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState([]);
   const [checkoutText, setCheckoutText] = useState('');
-  const navigation = useNavigation('');
+  
+  const navigation = useNavigation('');null
 /*
   const checkFirebaseConnection = async () => {
     try {
@@ -37,35 +43,70 @@ const Checkin = ({ route }) => {
     }
   };*/
 
- 
+  useEffect(() => {
+    Geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude } = position.coords;
+        setCurrentLocation({ latitude, longitude });
+      },
+      error => {
+        if (error.code === 1) {
+          console.error("Error getting current location: Permission denied");
+        } else if (error.code === 2) {
+          console.error("Error getting current location: Position unavailable");
+        } else if (error.code === 3) {
+          console.error("Error getting current location: Location request timed out");
+        } else {
+          console.error("Error getting current location:", error.message);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 1000 }
+    );
+  }, []);
+  
 
-  const fetchPlaces = async () => {
-    const querySnapshot = await getDocs(collection(firebase.firestore(), "geofences"));
-    const items = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        label: data.name.replace(/\"/g, ""), 
-        value: data.name.replace(/\"/g, ""),
-        id : doc.id
-      };
-    });
-    console.log("Fetched places:", items);
-    setSelectedplaces(items); 
-  };
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      if (currentLocation) {
+        const { latitude, longitude } = currentLocation;
+        const radius = 0.00030; // Approximately 30 meters
+        const lowerBound = new GeoPoint(latitude - radius, longitude - radius);
+        const upperBound = new GeoPoint(latitude + radius, longitude + radius);
 
+        const geofencesRef = collection(app2.firestore(), "geofences");
+        try {
+          const querySnapshot = await getDocs(
+            query(geofencesRef,
+              where("location", ">", lowerBound),
+              where("location", "<", upperBound)
+            )
+          );
 
-  useEffect(()=> {
-   fetchPlaces();
-  },[]);
-  //console.log("places:", places);
+          const items = querySnapshot.docs.map(doc => ({
+            label: doc.data().name.replace(/\"/g, ""),
+            value: doc.data().name.replace(/\"/g, ""),
+            id: doc.id
+          }));
+
+          console.log("Fetched places nearby:", items);
+          setSelectedplaces(items);
+        } catch (error) {
+          console.error("Error fetching places nearby:", error);
+          setSelectedplaces([]); // Ensure always setting an array even on error
+        }
+      }
+    };
+
+    fetchPlaces();
+  }, [currentLocation]);
 
   const handleSelectChange = (value) => {
     setSelectedValue(value);
   };
-  
+  /* enable button only after places and reason selected
   useEffect(() => {
     setIsButtonEnabled(selected !== null && selected2 !== null);
-  }, [selected, selected2]);
+  }, [selected, selected2]);*/
 
   const handleCheckout = () => {
     setCheckoutModalVisible(true);

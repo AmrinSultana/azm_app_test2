@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { View, Text, Button, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import firebase from '@react-native-firebase/app';
-import '@react-native-firebase/auth';
+//import firebase from '@react-native-firebase/app';
+import { app2 } from "../screens/FirebaseConfig";
+import auth from '@react-native-firebase/auth';
 
 
 const LoginScreen = ({navigation}) => {
@@ -11,12 +12,25 @@ const LoginScreen = ({navigation}) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
 
+  /*
   const handleLogin = async () => {
     try {
       const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
       navigation.navigate('Home', { email:userCredential.user.email });
     } catch (error) {
       setError(error.message);
+    }
+  };*/
+
+  const handleLogin = async () => {
+    try {
+      const firebaseAuth = auth(app2);
+      console.log('Firebase App instance:', app2);
+      console.log('Firebase Auth instance:', auth(app2));
+      const userCredential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+      navigation.navigate('Home', { email: userCredential.user.email });
+    } catch (error) {
+      console.log(error.message);
     }
   };
   
