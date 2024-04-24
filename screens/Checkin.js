@@ -2,11 +2,15 @@ import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Switch, TouchableOpacity, Modal, TextInput } from "react-native";
 import Geolocation from '@react-native-community/geolocation';
 import '@react-native-firebase/firestore';
-import { app2 } from "../screens/FirebaseConfig";
+import { app2,app1} from "../screens/FirebaseConfig";
 import { Card } from "react-native-elements";
+import Dropdown from 'react-native-element-dropdown';
 import { SelectList } from "react-native-dropdown-select-list";
+import { Picker } from "@react-native-picker/picker";
 import { useNavigation } from "@react-navigation/native";
-import { GeoPoint, getDocs, collection, query, where} from '@react-native-firebase/firestore';
+import { GeoPoint, getDocs, collection, query, where } from '@react-native-firebase/firestore';
+import * as geolib from 'geolib';
+
 //import { getCurrentPosition } from "geolocation";
 
 
@@ -17,96 +21,235 @@ const Checkin = ({ route }) => {
   const { isCameraEnabled, startTime, toggleCamera } = route.params;
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedValue, setSelectedValue] = useState('');
-  //const [selected, selected2] = useState([]);
-  const [places, setSelectedplaces] = useState([]);
-  const [reason, setSelectedreason] = useState([]);
+  const [selected, selected2] = useState([]);
+  const [userLocation, setUserLocation] = useState([]);
+  const [nearbyplaces, setnearbyPlaces] = useState([]);
+  const [selectedplaces, setselectedplaces] = useState([]);
+  const [reason, setSelectedReason] = useState('');
   const [isButtonEnabled, setIsButtonEnabled] = useState(false);
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState([]);
   const [checkoutText, setCheckoutText] = useState('');
-  
-  const navigation = useNavigation('');null
-/*
-  const checkFirebaseConnection = async () => {
-    try {
-      const snapshot = await firebase.firestore().collection('geofences').get();
-      if (snapshot.empty) {
-        console.log('No documents found!');
-      } else {
-        snapshot.forEach(doc => {
-          console.log(doc.id, '=>', doc.data());
-        });
-        return snapshot.docs.map(doc => doc.data()); 
-      }
-    } catch (error) {
-      console.error("Error fetching documents: ", error);
-    }
-  };*/
-
-  useEffect(() => {
-    Geolocation.getCurrentPosition(
-      position => {
-        const { latitude, longitude } = position.coords;
-        setCurrentLocation({ latitude, longitude });
-      },
-      error => {
-        if (error.code === 1) {
-          console.error("Error getting current location: Permission denied");
-        } else if (error.code === 2) {
-          console.error("Error getting current location: Position unavailable");
-        } else if (error.code === 3) {
-          console.error("Error getting current location: Location request timed out");
+  const navigation = useNavigation(''); null
+  /*
+    const checkFirebaseConnection = async () => {
+      try {
+        const snapshot = await firebase.firestore().collection('geofences').get();
+        if (snapshot.empty) {
+          console.log('No documents found!');
         } else {
-          console.error("Error getting current location:", error.message);
+          snapshot.forEach(doc => {
+            console.log(doc.id, '=>', doc.data());
+          });
+          return snapshot.docs.map(doc => doc.data()); 
         }
-      },
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 1000 }
-    );
-  }, []);
+      } catch (error) {
+        console.error("Error fetching documents: ", error);
+      }
+    };*/
+
+  /*
+   useEffect(() => {
+      Geolocation.getCurrentPosition(
+        position => {
+          const { latitude, longitude } = position.coords;
+          console.log(latitude,longitude)
+          setCurrentLocation({ latitude, longitude });
+        },
+        error => {
+          if (error.code === 1) {
+            console.error("Error getting current location: Permission denied");
+          } else if (error.code === 2) {
+            console.error("Error getting current location: Position unavailable");
+          } else if (error.code === 3) {
+            console.error("Error getting current location: Location request timed out");
+          } else {
+            console.error("Error getting current location:", error.message);
+          }
+        },
+        { enableHighAccuracy: true, timeout: 30000, maximumAge: 1000 }
+      );
+    }, []);
+    useEffect(() => {
+      const fetchPlaces = async () => {
+        if (currentLocation) {
+          const { latitude, longitude } = currentLocation;
+          const radius = 0.00050; // Approximately 30 meters
+          const lowerBound = new GeoPoint(latitude - radius, longitude - radius);
+          const upperBound = new GeoPoint(latitude + radius, longitude + radius);
   
-
+          console.log("LowerBound:", lowerBound);
+          console.log("UpperBound:", upperBound);
+  
+          const geofencesRef = collection(app2.firestore(), "geofences");
+          try {
+            const querySnapshot = await getDocs(
+              query(geofencesRef,
+                where("location", ">=", lowerBound),
+                where("location", "<=", upperBound)
+              )
+            );
+  
+            const items = querySnapshot.docs.map(doc => ({
+              label: doc.data().name.replace(/\"/g, ""),
+              value: doc.data().name.replace(/\"/g, ""),
+              id: doc.id
+            }));
+  
+            console.log("Fetched places nearby:", items);
+            setSelectedplaces(items);
+          } catch (error) {
+            console.error("Error fetching places nearby:", error);
+            setSelectedplaces([]); // Ensure always setting an array even on error
+          }
+        }
+      };
+  
+      fetchPlaces();
+    }, [currentLocation]); 
+  
+  
+    useEffect(() => {
+      const fetchPlaces = async () => {
+        if (currentLocation) {
+          const { latitude, longitude } = currentLocation;
+          const geofencesRef = collection(app2.firestore(), "geofences");
+  
+          try {
+            const querySnapshot = await getDocs(geofencesRef);
+            console.log("Number of places:", querySnapshot.size)
+            const items = [];
+  
+            querySnapshot.forEach(doc => {
+              const place = doc.data();
+              console.log("Place:", place);
+              const placeLocation = place.location;
+              const distance = calculateDistance(latitude, longitude, placeLocation.latitude, placeLocation.longitude);
+              
+              console.log("Distance to place:", distance);
+  
+              const maxDistance = 3000; 
+              if (distance <= maxDistance) {
+                items.push({
+                  label: place.name.replace(/\"/g, ""),
+                  value: place.name.replace(/\"/g, ""),
+                  id: doc.id
+                });
+              }
+            });
+            console.log("Number of nearby places:", items.length);
+            console.log("Fetched places nearby:", items);
+            setSelectedplaces(items);
+          } catch (error) {
+            console.error("Error fetching places nearby:", error);
+            setSelectedplaces([]); 
+          }
+        }
+      };
+  
+      fetchPlaces();
+    }, [currentLocation]);
+  
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+      const R = 6371e3; // metres
+      const φ1 = lat1 * Math.PI / 180; // φ, λ in radians
+      const φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+  
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  
+      const d = R * c; // in metres
+      return d;
+    }; */
   useEffect(() => {
-    const fetchPlaces = async () => {
-      if (currentLocation) {
-        const { latitude, longitude } = currentLocation;
-        const radius = 0.00030; // Approximately 30 meters
-        const lowerBound = new GeoPoint(latitude - radius, longitude - radius);
-        const upperBound = new GeoPoint(latitude + radius, longitude + radius);
+    // Get user's current location
+    const getLocation = () => {
+      Geolocation.getCurrentPosition(
+        position => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        error => console.error(error),
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
+      );
+    };
 
-        const geofencesRef = collection(app2.firestore(), "geofences");
+    const locationWatcher = Geolocation.watchPosition(
+      getLocation,
+      error => console.error(error),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
+    );
+
+    return () => {
+      console.log(Geolocation.clearWatch(locationWatcher));
+    };
+  }, []);
+
+
+
+  //console.log(geolib);
+  useEffect(() => {
+    if (userLocation) {
+      // Query Firestore for nearby places
+      const placesRef = collection(app2.firestore(), "geofencetest");
+      placesRef
+        .get()
+        .then(querySnapshot => {
+          const nearby = [];
+          querySnapshot.forEach(doc => {
+            const place = doc.data();
+            console.log("Place:", place);
+            const distance = geolib.getDistance(
+              { latitude: userLocation.latitude, longitude: userLocation.longitude },
+              { latitude: place.latitude, longitude: place.longitude }
+            );
+            console.log("Distance:", distance);
+            if (distance < 500) { // Distance less than 5 km (adjust as needed)
+              nearby.push(place);
+            }
+          });
+          setnearbyPlaces(nearby);
+        })
+        //.catch(error => console.error('Error getting documents: ', error));
+    }
+  }, [userLocation]);
+
+  /*
+    useEffect(() => {
+      const fetchPlaces = async () => {
+        const geofencesRef = collection(app2.firestore(), "geofencetest");
+  
         try {
-          const querySnapshot = await getDocs(
-            query(geofencesRef,
-              where("location", ">", lowerBound),
-              where("location", "<", upperBound)
-            )
-          );
-
+          const querySnapshot = await geofencesRef.get();
+          console.log("Total documents fetched:", querySnapshot.docs.length);
           const items = querySnapshot.docs.map(doc => ({
             label: doc.data().name.replace(/\"/g, ""),
             value: doc.data().name.replace(/\"/g, ""),
             id: doc.id
           }));
-
-          console.log("Fetched places nearby:", items);
-          setSelectedplaces(items);
+  
+          console.log("Fetched places:", items);
+          setPlaces(items);
         } catch (error) {
-          console.error("Error fetching places nearby:", error);
-          setSelectedplaces([]); // Ensure always setting an array even on error
+          console.error("Error fetching places:", error);
         }
-      }
-    };
-
-    fetchPlaces();
-  }, [currentLocation]);
+      };
+  
+      fetchPlaces();
+    }, []);*/
 
   const handleSelectChange = (value) => {
     setSelectedValue(value);
   };
-  /* enable button only after places and reason selected
+   //enable button only after places and reason selected
   useEffect(() => {
     setIsButtonEnabled(selected !== null && selected2 !== null);
-  }, [selected, selected2]);*/
+  }, [selected, selected2]);
 
   const handleCheckout = () => {
     setCheckoutModalVisible(true);
@@ -175,20 +318,24 @@ const Checkin = ({ route }) => {
               <Text style={styles.durationText}> Attendance Duration: {runningTime}</Text>
             </View>
             <View style={{ marginTop: 25 }}>
-              <SelectList
-                data={places}
-                setSelected={setSelectedplaces}
-                placeholder="Select Place"
-                displayField="label"
-                onValueChange = {handleSelectChange}
-              />
+            <Text>Select Location:</Text>
+              <Picker
+                selectedValue={selectedplaces}
+                onValueChange={(itemValue, itemIndex) => setselectedplaces(itemValue)}>
+                
+                {nearbyplaces.map(place => (
+                  <Picker.Item key={place.id} label={place.name} value={place.id} />
+                ))}
+              </Picker>
             </View>
             <View style={{ marginTop: 25 }}>
-              <SelectList
-                data={reason}
-                setSelected={setSelectedreason}
-                placeholder="Select Reason"
-              />
+              <Text>Select a reason:</Text>
+              <Picker
+                selectedValue={reason}
+                onValueChange={(itemValue, itemIndex) => setSelectedReason(itemValue)}>
+                <Picker.Item label="Attendance" value="Attendance" />
+                {/* Add more options here if needed */}
+              </Picker>
             </View>
           </>
         )}

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { View, Text, Button, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 //import firebase from '@react-native-firebase/app';
-import { app2 } from "../screens/FirebaseConfig";
+import { app2,app1 } from "../screens/FirebaseConfig";
 import auth from '@react-native-firebase/auth';
 
 
@@ -24,10 +24,11 @@ const LoginScreen = ({navigation}) => {
 
   const handleLogin = async () => {
     try {
-      const firebaseAuth = auth(app2);
-      console.log('Firebase App instance:', app2);
-      console.log('Firebase Auth instance:', auth(app2));
+      const firebaseAuth = auth(app1);
+      console.log('Firebase App instance:', app1);
+      console.log('Firebase Auth instance:', auth(app1));
       const userCredential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+      console.log("user logged in successfully");
       navigation.navigate('Home', { email: userCredential.user.email });
     } catch (error) {
       console.log(error.message);
